@@ -45,7 +45,7 @@ export function LandingPrompt({ isAuthenticated }: { isAuthenticated: boolean })
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Armário para banheiro"
+        placeholder="Ex.: armário para banheiro pequeno em madeira clara"
         className="h-16 rounded-full border-2 border-[var(--color-brand-purple)] pl-6 pr-16 text-base shadow-sm placeholder:text-[var(--color-brand-purple)]/60"
         aria-label="Descreva sua ideia"
       />

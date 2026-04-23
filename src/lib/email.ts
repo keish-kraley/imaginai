@@ -62,10 +62,10 @@ export interface IdeaApprovedEmailPayload {
 
 export async function sendIdeaApprovedEmail(p: IdeaApprovedEmailPayload) {
   const html = renderIdeaApprovedHtml(p);
-  const text = `Nova ideia aprovada por ${p.userName} (${p.userEmail}).\nPrompt: ${p.originalPrompt}\nResumo: ${p.summary}\nImagem: ${p.imageUrl}`;
+  const text = `Nova ideia aprovada por um cliente Astra: ${p.userName} (${p.userEmail}).\nPrompt: ${p.originalPrompt}\nResumo: ${p.summary}\nImagem: ${p.imageUrl}`;
   return sendEmail({
     to: p.adminEmail,
-    subject: "✨ Ideia Recebida — ImaginAI",
+    subject: `✨ Nova ideia de cliente Astra — ${p.userName}`,
     html,
     text,
     replyTo: p.userEmail,
@@ -95,8 +95,8 @@ function renderIdeaApprovedHtml(p: IdeaApprovedEmailPayload): string {
           </tr>
           <tr>
             <td style="padding:32px;color:#1f2330;font-size:15px;line-height:1.55;">
-              <p style="margin:0 0 16px;">Olá!</p>
-              <p style="margin:0 0 16px;">Recebemos uma ideia! Abaixo está o prompt enviado e a imagem gerada com base nele:</p>
+              <p style="margin:0 0 16px;">Olá, time Astra!</p>
+              <p style="margin:0 0 16px;">Um cliente Astra acabou de aprovar uma ideia no ImaginAI. Abaixo está o prompt enviado e a imagem gerada com base nele:</p>
               <div style="border-left:4px solid #2E5BFF;padding:12px 16px;background:#f0f3ff;border-radius:6px;margin:16px 0;">
                 <div style="font-weight:700;color:#2E5BFF;margin-bottom:4px;">Prompt enviado:</div>
                 <div style="color:#1f2330;">${escapeHtml(p.originalPrompt)}</div>
