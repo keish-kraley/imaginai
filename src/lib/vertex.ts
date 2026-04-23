@@ -55,11 +55,45 @@ export async function generateText(
 // ---------------------------------------------------------------------------
 // Image generation ("Nano Banana" — gemini-2.5-flash-image).
 // ---------------------------------------------------------------------------
-export async function generateImage(prompt: string): Promise<Buffer> {
+export interface ReferenceImage {
+  /** Raw image bytes of the reference to be edited. */
+  buffer: Buffer;
+  /** MIME type, e.g. "image/png". Defaults to png. */
+  mimeType?: string;
+}
+
+/**
+ * Generate a new image from a text prompt, optionally using a reference image
+ * as a visual anchor. When `reference` is provided, gemini-2.5-flash-image
+ * will edit the reference — keeping unspecified attributes untouched — rather
+ * than regenerating the scene from scratch. This is the mechanism behind the
+ * "intelligent refinement" flow: a dislike + rework comment becomes an
+ * in-place edit of the previous image.
+ */
+export async function generateImage(
+  prompt: string,
+  reference?: ReferenceImage,
+): Promise<Buffer> {
   const c = getClient();
+  const contents = reference
+    ? [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: reference.buffer.toString("base64"),
+                mimeType: reference.mimeType ?? "image/png",
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ]
+    : prompt;
   const res = await c.models.generateContent({
     model: env.VERTEX_IMAGE_MODEL,
-    contents: prompt,
+    contents,
   });
   const candidates = res.candidates ?? [];
   for (const candidate of candidates) {

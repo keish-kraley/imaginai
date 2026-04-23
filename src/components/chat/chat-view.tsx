@@ -163,13 +163,16 @@ export function ChatView({
             return;
           }
           if (event.type === "image") {
+            const refined = Boolean((event as { refined?: boolean }).refined);
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === tempAssistantId
                   ? {
                       ...m,
                       id: String(event.messageId),
-                      content: "Aqui está sua imagem!",
+                      content: refined
+                        ? "Aqui está a imagem ajustada! 👇"
+                        : "Aqui está sua imagem! 👇",
                       imageUrl: String(event.imageUrl),
                       imagePrompt: String(event.prompt ?? ""),
                       pending: false,
@@ -322,11 +325,13 @@ export function ChatView({
   return (
     <div className="relative flex h-full flex-col bg-white">
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
           {messages.length === 0 && (
             <div className="rounded-xl bg-[var(--color-muted)] p-4 text-sm text-[var(--color-muted-foreground)]">
-              Descreva a imagem que você imagina para o seu item de casa ou
-              construção. O ImaginAI vai gerar uma prévia em segundos.
+              Olá, idealizador(a) Astra! Descreva o item para casa ou
+              construção que você gostaria de ver e eu gero uma prévia em
+              segundos. Depois você ajusta com 👍 / 👎 e envia a ideia para
+              a Astra avaliar.
             </div>
           )}
           {messages.map((m) => (
@@ -352,11 +357,12 @@ export function ChatView({
                 </div>
               )}
               {m.role === "ASSISTANT" && m.imageUrl && (
-                <div className="mr-auto max-w-[90%]">
+                <div className="mr-auto w-full max-w-[min(48rem,100%)]">
                   <MessageBubble role="assistant" content={m.content} />
                   <ImageCard
                     messageId={m.id}
                     imageUrl={m.imageUrl}
+                    imagePrompt={m.imagePrompt}
                     feedback={m.feedback}
                     reworkPending={m.reworkPending ?? false}
                     onFeedback={handleFeedback}

@@ -21,4 +21,18 @@ describe("localClassify", () => {
     const r = localClassify("um carro esportivo vermelho");
     expect(r.intent).toBe("out_of_scope");
   });
+
+  it("flags a short tweak after an existing image as a refinement", () => {
+    const r = localClassify("agora em verde", {
+      previousImagePrompt: "um armário vermelho para banheiro pequeno",
+    });
+    expect(r.intent).toBe("generate_image");
+    expect(r.isRefinement).toBe(true);
+  });
+
+  it("does not set refinement when there is no previous image", () => {
+    const r = localClassify("um armário vermelho");
+    expect(r.intent).toBe("generate_image");
+    expect(r.isRefinement).toBeFalsy();
+  });
 });

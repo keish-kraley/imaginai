@@ -47,6 +47,27 @@ export async function uploadGeneratedImage(
   return { gcsKey: key, signedUrl };
 }
 
+/**
+ * Download an image previously uploaded to GCS. Used by the intelligent
+ * refinement flow to feed the original bytes back into gemini-2.5-flash-image
+ * as a reference for in-place editing.
+ */
+export async function downloadGcsImage(
+  gcsKey: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!env.GCP_ENABLED) {
+    throw new Error("GCP not configured; cannot download from GCS");
+  }
+  const file = getStorage().bucket(env.GCS_BUCKET_NAME).file(gcsKey);
+  const [buffer] = await file.download();
+  const [metadata] = await file.getMetadata();
+  const contentType =
+    typeof metadata.contentType === "string" && metadata.contentType
+      ? metadata.contentType
+      : "image/png";
+  return { buffer, contentType };
+}
+
 export async function signUrl(gcsKey: string): Promise<string> {
   const bucketName = env.GCS_BUCKET_NAME;
   const file = getStorage().bucket(bucketName).file(gcsKey);

@@ -26,9 +26,9 @@ export default async function LandingPage() {
             <span className="text-[var(--color-brand-purple)]">AI</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-[var(--color-muted-foreground)] sm:text-base">
-            Descreva um item para casa ou construção e receba imagens geradas
-            por inteligência artificial. As ideias aprovadas são avaliadas pela
-            Astra.
+            Exclusivo para clientes Astra: descreva um item para casa ou
+            construção, receba uma prévia em imagem e envie as ideias aprovadas
+            direto para o nosso time avaliar.
           </p>
           <div className="mt-10">
             <LandingPrompt isAuthenticated={Boolean(session?.user)} />

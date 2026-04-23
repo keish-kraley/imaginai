@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { classifyPrompt } from "@/lib/scope";
 import { generateImage } from "@/lib/vertex";
-import { uploadGeneratedImage } from "@/lib/gcs";
+import { downloadGcsImage, uploadGeneratedImage } from "@/lib/gcs";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { env } from "@/lib/env";
 import { truncate } from "@/lib/utils";
@@ -24,6 +24,7 @@ type SSEEvent =
       messageId: string;
       imageUrl: string;
       prompt: string;
+      refined: boolean;
     }
   | { type: "done"; pendingFeedbackNudge?: string }
   | { type: "error"; message: string };
@@ -85,7 +86,30 @@ export async function POST(req: Request) {
       try {
         send({ type: "status", text: "Analisando seu pedido..." });
 
-        const classification = await classifyPrompt(prompt);
+        // Look up the most recent image in this conversation. If the user is
+        // describing a variation of it ("agora em verde", "um pouco maior",
+        // "sem puxador"), we feed that image back into the image model as a
+        // reference so we edit it in place instead of generating something
+        // completely different.
+        const previousImageMessage = await prisma.message.findFirst({
+          where: {
+            conversationId,
+            role: "ASSISTANT",
+            imageUrl: { not: null },
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            imagePrompt: true,
+            imageGcsKey: true,
+            feedback: true,
+          },
+        });
+
+        const classification = await classifyPrompt(prompt, {
+          previousImagePrompt: previousImageMessage?.imagePrompt ?? undefined,
+          previousImageDisliked: previousImageMessage?.feedback === "DISLIKE",
+        });
 
         if (classification.intent !== "generate_image") {
           const reply =
@@ -109,13 +133,48 @@ export async function POST(req: Request) {
         }
 
         const imagePrompt = (classification.imagePrompt ?? prompt).trim();
+        const isRefinement =
+          !!classification.isRefinement && !!previousImageMessage?.imageGcsKey;
 
-        send({ type: "status", text: "Gerando imagem..." });
+        send({
+          type: "status",
+          text: isRefinement
+            ? "Ajustando a imagem anterior..."
+            : "Gerando imagem...",
+        });
 
         let imageUrl: string;
         let gcsKey: string | null = null;
         if (env.GCP_ENABLED) {
-          const buffer = await generateImage(imagePrompt);
+          let reference;
+          let effectivePrompt = imagePrompt;
+          if (isRefinement && previousImageMessage?.imageGcsKey) {
+            try {
+              const downloaded = await downloadGcsImage(
+                previousImageMessage.imageGcsKey,
+              );
+              reference = {
+                buffer: downloaded.buffer,
+                mimeType: downloaded.contentType,
+              };
+              const base = previousImageMessage.imagePrompt ?? "";
+              effectivePrompt = [
+                "Você está editando a imagem de referência enviada.",
+                base
+                  ? `A imagem original representa: "${base}".`
+                  : "A imagem original deve ser preservada o máximo possível.",
+                "Mantenha o MESMO objeto, MESMO ângulo, MESMA composição, MESMO fundo e MESMO estilo.",
+                `Aplique somente esta mudança solicitada pelo idealizador Astra: ${imagePrompt}.`,
+                "Não gere um item diferente; apenas ajuste o que foi pedido.",
+              ].join(" ");
+            } catch (refErr) {
+              console.warn(
+                "[chat/send] refinement reference download failed, falling back to fresh generation:",
+                refErr,
+              );
+            }
+          }
+          const buffer = await generateImage(effectivePrompt, reference);
           const uploaded = await uploadGeneratedImage(buffer);
           imageUrl = uploaded.signedUrl;
           gcsKey = uploaded.gcsKey;
@@ -123,14 +182,21 @@ export async function POST(req: Request) {
           imageUrl = buildPlaceholderImage(imagePrompt);
         }
 
+        // Keep track of the full prompt (original + refinement) so the
+        // next turn's classifier can reason about the cumulative history.
+        const storedImagePrompt = isRefinement && previousImageMessage?.imagePrompt
+          ? `${previousImageMessage.imagePrompt} — ajuste: ${imagePrompt}`
+          : imagePrompt;
         const assistant = await prisma.message.create({
           data: {
             conversationId,
             role: "ASSISTANT",
-            content: "Aqui está sua imagem!",
+            content: isRefinement
+              ? "Aqui está a imagem ajustada! 👇"
+              : "Aqui está sua imagem! 👇",
             imageUrl,
             imageGcsKey: gcsKey,
-            imagePrompt,
+            imagePrompt: storedImagePrompt,
           },
         });
         await prisma.conversation.update({
@@ -143,6 +209,7 @@ export async function POST(req: Request) {
           messageId: assistant.id,
           imageUrl,
           prompt: imagePrompt,
+          refined: isRefinement,
         });
 
         // Check for nudge: 3+ consecutive user image messages without feedback.
