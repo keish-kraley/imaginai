@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: imaginai
+      POSTGRES_PASSWORD: imaginai
+      POSTGRES_DB: imaginai
+    ports:
+      - "5432:5432"
+    volumes:
+      - imaginai_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imaginai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://imaginai:imaginai@db:5432/imaginai?schema=public
+    ports:
+      - "3000:3000"
+
+volumes:
+  imaginai_pg:

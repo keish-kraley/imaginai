@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: imaginai
+          POSTGRES_PASSWORD: imaginai
+          POSTGRES_DB: imaginai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U imaginai"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgresql://imaginai:imaginai@localhost:5432/imaginai?schema=public
+      AUTH_SECRET: ci-secret-not-real
+      NEXTAUTH_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
+      ADMIN_EMAIL: admin@astra-sa.com
+      CONTACT_EMAIL: contato@astra-sa.com
+      SMTP_FROM: "ImaginAI <no-reply@astra-sa.com>"
+      VERTEX_TEXT_MODEL: gemini-2.5-flash
+      VERTEX_IMAGE_MODEL: gemini-2.5-flash-image
+      GCP_LOCATION: us-central1
+      GCS_SIGNED_URL_EXPIRATION_DAYS: "7"
+      CHAT_RATE_LIMIT_PER_MINUTE: "30"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma migrate deploy
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
