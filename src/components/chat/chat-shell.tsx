@@ -12,7 +12,7 @@ import {
   LayoutDashboard,
   User,
 } from "lucide-react";
-import { cn, truncate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SessionRatingProvider } from "@/components/chat/session-rating-provider";
+import { ChatListItem } from "@/components/chat/chat-list-item";
 import { Logo } from "@/components/site/logo";
 
 export interface ChatConversation {
@@ -97,18 +98,12 @@ export function ChatShell({
               </p>
             ) : (
               conversations.map((c) => (
-                <Link
+                <ChatListItem
                   key={c.id}
-                  href={`/chat/${c.id}`}
-                  className={cn(
-                    "block truncate rounded-lg px-3 py-2 text-sm",
-                    activeId === c.id
-                      ? "bg-[var(--color-muted)] font-medium"
-                      : "text-[var(--color-foreground)] hover:bg-[var(--color-muted)]",
-                  )}
-                >
-                  {truncate(c.title, 28)}
-                </Link>
+                  id={c.id}
+                  title={c.title}
+                  active={activeId === c.id}
+                />
               ))
             )}
           </nav>
