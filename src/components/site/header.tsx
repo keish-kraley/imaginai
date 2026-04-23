@@ -1,16 +1,9 @@
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/site/logo";
 import { AstraLogo } from "@/components/site/astra-logo";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { HeaderUserMenu } from "@/components/site/header-user-menu";
 
 export async function SiteHeader() {
   const session = await auth();
@@ -35,44 +28,14 @@ export async function SiteHeader() {
         </div>
         <div className="flex items-center gap-3">
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="inline-flex items-center gap-2 rounded-full">
-                  <Avatar className="h-9 w-9 border border-[var(--color-border)]">
-                    <AvatarImage src={user.image ?? undefined} alt={user.name ?? ""} />
-                    <AvatarFallback>
-                      {(user.name ?? user.email ?? "U").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/chat">Meus chats</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/perfil">Perfil</Link>
-                </DropdownMenuItem>
-                {user.role === "ADMIN" && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin/dashboard">Painel admin</Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await signOut({ redirectTo: "/" });
-                    }}
-                  >
-                    <button type="submit" className="w-full text-left">
-                      Sair
-                    </button>
-                  </form>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <HeaderUserMenu
+              user={{
+                name: user.name ?? null,
+                email: user.email ?? null,
+                image: user.image ?? null,
+                role: (user.role as "USER" | "ADMIN") ?? "USER",
+              }}
+            />
           ) : (
             <Button asChild size="sm">
               <Link href="/login">login</Link>
